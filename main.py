@@ -1,73 +1,76 @@
 from board import Board
 import board_util as bu
+import network_client as net
 import time
-import numpy as np
+import sys
 
-puzzle = [0, 0, 3, 0, 2, 0, 6, 0, 0,
-          9, 0, 0, 3, 0, 5, 0, 0, 1,
-          0, 0, 1, 8, 0, 6, 4, 0, 0,
-          0, 0, 8, 1, 0, 2, 9, 0, 0,
-          7, 0, 0, 0, 0, 0, 0, 0, 8,
-          0, 0, 6, 7, 0, 8, 2, 0, 0,
-          0, 0, 2, 6, 0, 9, 5, 0, 0,
-          8, 0, 0, 2, 0, 3, 0, 0, 9,
-          0, 0, 5, 0, 1, 0, 3, 0, 0]
+print(f"Iniciando voluntário. Conectando em: {net.TARGET_URL}")
+
+puzzle = net.get_initial_board()
+
+if not puzzle:
+    print("Não foi possível carregar o tabuleiro. Encerrando.")
+    sys.exit(1)
 
 board = Board(puzzle)
-print("Initial board:", board)
-time.sleep(3)
+print("Tabuleiro inicial recebido:")
+print(board)
+time.sleep(2)
 
-# If temperature reaches 0 and solution is still not found, restart process with new random Sudoku
-print("Generating random Sudoku solution from scratch")
-time.sleep(3)
 solution_found = False
-
-# time how long it takes to find a solution
 start_time = time.time()
+
+print("Iniciando Simulated Annealing...")
+
 while not solution_found:
-    temp_decrease = 0.99 # Decay rate for temperature
-    stuck_counter = 0 # Counter for number of times worse solution is accepted
+    temp_decrease = 0.99 
+    stuck_counter = 0 
     
-    # Start by randomly finding a solution to the Sudoku. This always has correct subgrids (not
-    # checked for row and columns)
     temp_board = bu.randomizeSudoku(board)
     temp = bu.initialTemp(board) 
-    cost = bu.boardCost(temp_board) # Total errors in the board (row and column repeats)
+    cost = bu.boardCost(temp_board) 
     iterations = bu.totalIterations(board)
-
-    # If cost < 0, this means that the solution was found.
+    
+    best_cost_so_far = cost
+    
     if cost <= 0:
         solution_found = True
 
     while not solution_found:
         previous_cost = cost
-        # Pick a new board for each iteration and add the cost difference to the total cost of the 
-        # board, breaking if cost reaches 0.
+        
         for i in range(iterations):
             temp_board, cost_diff = bu.chooseNewBoard(temp_board, board, cost, temp)
             cost += cost_diff
+            
+            # Gatilho de Envio
+            if cost < best_cost_so_far:
+                best_cost_so_far = cost
+                print(f"Novo progresso - Erros restantes: {cost}")
+                clean_matrix = bu.sanitize_board(temp_board)
+                net.send_progress(clean_matrix)
+
             if cost <= 0:
                 solution_found = True
                 break
 
-        # Decrement temperature and check for solution
         temp *= temp_decrease
+        
         if cost <= 0:
             solution_found = True
-        
-        # If overall cost has increased, increment stuck
         elif cost >= previous_cost:
             stuck_counter += 1
         else:
             stuck_counter = 0
 
-        # If high stuck counter, increase temperature
         if stuck_counter >= 100:
             temp += 2
+            
         if bu.boardCost(temp_board) == 0:
-            print("Solution Found: ", bu.boardCost(temp_board))
+            print(f"Solução Encontrada - Tempo: {time.time() - start_time:.2f}s")
             print(temp_board)
+            final_matrix = bu.sanitize_board(temp_board)
+            net.send_progress(final_matrix)
             break
 
-# Print time taken to find solution
-print("Time taken: ", time.time() - start_time)
+print("Execução finalizada com sucesso.")

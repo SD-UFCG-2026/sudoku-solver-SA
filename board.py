@@ -1,125 +1,75 @@
 import numpy as np
+import math
 
 class Board:
     """
-    Board class that represents a Sudoku board as a numpy array of size 9x9. This includes getters and
-    setters for rows, columns, and subgrids.
-
-    attributes:
-        grid(numpy.ndarray): a 9x9 numpy array representing the Sudoku board
-        fixedValues(numpy.ndarray): a 9x9 numpy array representing the fixed values on the Sudoku board with 1s
+    Board class that represents a Sudoku board as a numpy array of size NxN.
+    This includes getters and setters for rows, columns, and subgrids.
     """
     def __init__(self, puzzle):
         """
-        Initialize the board with a np.array representing a
-        9x9 sudoku puzzle.
-
+        Initialize the board with a np.array representing an NxN sudoku puzzle.
         args:
-            puzzle(list): a list of 81 integers, where 0 represents an empty cell
+            puzzle(list): a list of integers, where 0 represents an empty cell
         """
-        self.grid = np.array(puzzle).reshape((9, 9))
+        # Define as dimensões N (ex: 9) e subgrid_size (ex: 3) dinamicamente
+        self.N = int(math.sqrt(len(puzzle)))
+        self.subgrid_size = int(math.sqrt(self.N))
+        
+        self.grid = np.array(puzzle).reshape((self.N, self.N))
         board_copy = self.grid.copy()
         self.fixedValues = np.where(board_copy != 0, 1, board_copy)
 
     def __repr__(self):
         """
-        Create a formatted string representation of the board.
-
+        Create a formatted string representation of the board dynamically.
         returns:
-            (str) a formatted string representation of the board with
-            horizontal and vertical lines
+            (str) a formatted string representation of the board
         """
-        lines = ["-" * 25]
-        for i in range(9):
+        # Calcula o tamanho da linha dinamicamente para os traços
+        line_length = self.N * 2 + self.subgrid_size * 2 + 1
+        lines = ["-" * line_length]
+        for i in range(self.N):
             line = "| "
-            for j in range(9):
+            for j in range(self.N):
                 line += str(self.grid[i][j]) + " "
-                if j % 3 == 2:
+                if j % self.subgrid_size == self.subgrid_size - 1:
                     line += "| "
             lines.append(line)
-            if i % 3 == 2:
-                lines.append("-" * 25)
+            if i % self.subgrid_size == self.subgrid_size - 1:
+                lines.append("-" * line_length)
         return "\n".join(lines)
 
     def getVal(self, row, col):
-        """
-        Get the value at a given row and column.
-
-        args:
-            row(int): the row of the cell between 0 and 8
-            col(int): the column of the cell between 0 and 8
-
-        returns:
-            (int) the value at the given row and column
-        """
+        """Get the value at a given row and column."""
         try:
             return self.grid[row][col]
         except IndexError:
             raise IndexError(f"Invalid row or column: {row}, {col}")
 
     def setVal(self, row, col, val):
-        """
-        Set the value at a given row and column.
-
-        args:
-            row(int): the row of the cell between 0 and 8
-            col(int): the column of the cell between 0 and 8
-            val(int): the value to set the cell to, between 1 and 9
-        """
+        """Set the value at a given row and column."""
         self.grid[row][col] = val
 
     def getRow(self, row):
-        """
-        Get the values in a given row.
-
-        args:
-            row(int): the row of the grid between 0 and 8
-
-        returns:
-            (numpy.ndarray) the values in the given row
-        """
+        """Get the values in a given row."""
         try:
             return self.grid[row]
         except IndexError:
             raise IndexError(f"Invalid row: {row}")
 
     def getCol(self, col):
-        """
-        Get the values in a given column.
-
-        args:
-            col(int): the column of the grid between 0 and 8
-
-        returns:
-            (numpy.ndarray) the values in the given column
-        """
+        """Get the values in a given column."""
         return self.grid[:, col]
 
     def getSubgrid(self, row, col, fixed=False):
-        """
-        Get the 3x3 subgrid containing the given row and column.
-
-        args:
-            row(int): the row of the cell between 0 and 8
-            col(int): the column of the cell between 0 and 8
-
-        returns:
-            (numpy.ndarray) the 3x3 subgrid containing the given row and column
-        """
-        row_start = row - row % 3
-        col_start = col - col % 3
+        """Get the subgrid containing the given row and column."""
+        row_start = row - (row % self.subgrid_size)
+        col_start = col - (col % self.subgrid_size)
         if fixed:
-            return self.fixedValues[row_start : row_start + 3, col_start : col_start + 3]
-        return self.grid[row_start : row_start + 3, col_start : col_start + 3]
+            return self.fixedValues[row_start : row_start + self.subgrid_size, col_start : col_start + self.subgrid_size]
+        return self.grid[row_start : row_start + self.subgrid_size, col_start : col_start + self.subgrid_size]
 
     def getSubgridSum(self, subgrid):
-        """
-        Get the sum of the values in a given subgrid.
-
-        args:
-            subgrid(numpy.ndarray): a 3x3 subgrid
-
-        returns:
-            (int) the sum of the values in the given subgrid
-        """
+        """Get the sum of the values in a given subgrid."""
         return np.sum(subgrid)

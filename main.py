@@ -42,13 +42,15 @@ while not solution_found:
         for i in range(iterations):
             temp_board, cost_diff = bu.chooseNewBoard(temp_board, board, cost, temp)
             cost += cost_diff
-            
+
+            #unrestricted shipping
+            clean_matrix = bu.sanitize_board(temp_board)
+            net.send_progress(clean_matrix)
             # Gatilho de Envio
             if cost < best_cost_so_far:
                 best_cost_so_far = cost
                 print(f"Novo progresso - Erros restantes: {cost}")
-                clean_matrix = bu.sanitize_board(temp_board)
-                net.send_progress(clean_matrix)
+                
 
             if cost <= 0:
                 solution_found = True
@@ -69,8 +71,8 @@ while not solution_found:
         if bu.boardCost(temp_board) == 0:
             print(f"Solução Encontrada - Tempo: {time.time() - start_time:.2f}s")
             print(temp_board)
-            final_matrix = bu.sanitize_board(temp_board)
-            net.send_progress(final_matrix)
+            #final_matrix = bu.sanitize_board(temp_board)
+            #net.send_progress(final_matrix)
             break
 
 print("Execução finalizada com sucesso.")

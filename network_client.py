@@ -58,7 +58,6 @@ def get_initial_board():
         return None
 
 def send_progress(clean_board_matrix):
-    """Envia o progresso validado para a API com repetição (Backoff)."""
     signature_hex = sign_nick()
     
     dto = {
@@ -68,30 +67,27 @@ def send_progress(clean_board_matrix):
             "key": PUBLIC_KEY_B64
         }
     }
-    print(dto)
     
-    max_retries = 5
     backoff_time = 2 
-
-    for attempt in range(max_retries):
+    while True:
         try:
-            response = requests.post(TARGET_URL, json=dto, timeout=5)
+            #timeout  5sec --> 3sec
+            response = requests.post(TARGET_URL, json=dto, timeout=3)
             
-            # Aceitando qualquer resposta de sucesso
             if response.status_code in [200, 201, 202]:
                 return True
             elif response.status_code == 429:
-                print(f"API sobrecarregada (429). Aguardando {backoff_time}s...")
+                print(f"Erro 429. Aguardando {backoff_time}s...")
                 time.sleep(backoff_time)
-                backoff_time *= 2
+                #Backoff limit 60 seconds
+                backoff_time = min(backoff_time * 2, 60)
                 continue
             else:
-                print(f"Erro da API no POST: {response.status_code} - {response.text}")
-                return False
+                print(f"Erro: {response.status_code}. Retentando em {backoff_time}s...")
+                time.sleep(backoff_time)
+                backoff_time = min(backoff_time * 2, 60)
                 
         except requests.exceptions.RequestException as e:
-            print(f"Falha de conexão no POST: {e}")
+            print(f"Falha de conexão no POST: {e}. Retentando em {backoff_time}s...")
             time.sleep(backoff_time)
-            backoff_time *= 2
-
-    return False
+            backoff_time = min(backoff_time * 2, 60)
